@@ -20,8 +20,8 @@ async validateUser(username: string, password: string): Promise<any> {
   async login(user: any) {
    
     return {
-      access_token: this.generateAccessToken(user),
-      refresh_token:this.generateRefreshToken(user)
+      access_token: await this.generateAccessToken(user),
+      refresh_token:await this.generateRefreshToken(user)
     };
   }
 
