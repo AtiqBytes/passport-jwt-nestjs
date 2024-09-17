@@ -36,6 +36,18 @@ async validateUser(username: string, password: string): Promise<any> {
     const payload = { username: user.username, sub: user.userId };
     return  this.jwtService.sign(payload,{ expiresIn: '7d' });
     }
+
+    async validateRefreshToken(token: string): Promise<any> {
+      try {
+        const payload = this.jwtService.verify(token);
+        const user = await this.userService.findOne(payload.username);
+        if (user) {
+          return { ...user, token };
+        }
+      } catch (error) {
+        return null;
+      }
+    }
   }
 
 
