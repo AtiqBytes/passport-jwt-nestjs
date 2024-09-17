@@ -18,10 +18,24 @@ async validateUser(username: string, password: string): Promise<any> {
   }
 
   async login(user: any) {
-    const payload = { username: user.username, sub: user.userId };
+   
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.generateAccessToken(user),
+      refresh_token:this.generateRefreshToken(user)
     };
   }
 
-}
+  async generateAccessToken(user:any)
+  {
+    const payload = { username: user.username, sub: user.userId };
+    return  this.jwtService.sign(payload,{ expiresIn: '60s' });
+  }
+
+  async generateRefreshToken(user:any)
+  {
+    const payload = { username: user.username, sub: user.userId };
+    return  this.jwtService.sign(payload,{ expiresIn: '7d' });
+    }
+  }
+
+
