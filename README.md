@@ -428,7 +428,7 @@ test coverage:
 Clone the project
 
 ```bash
-  git clone https://github.com/AtiqBytes/nestjs-security-authentication-authorization.git
+  git clone https://github.com/AtiqBytes/passport-jwt-nestjs.git
 ```
 
 Go to the project directory
