@@ -1,5 +1,5 @@
 
-# NestJs Authentication & Authorization
+# NestJs Authentication & Authorization With passportjs & Role Based Access
 
 Are you tired of worrying about user authentication and authorization in your NestJS applications and want role-based authorization? Look no further! This project provides a comprehensive, battle-tested solution for managing user access and permissions, so you can focus on building amazing apps.
 
