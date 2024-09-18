@@ -190,7 +190,7 @@ const payload = { username: user.username, sub: user.userId, roles: [user.role] 
 Also, make sure that the roles are properly included when validating the token in jwt.strategy.ts:
 ```typescript
 return { userId: payload.sub, username: payload.username, roles: payload.roles };
-```typescript
+```
 
 #### Q: Why is the admin login not working while user login works?
 
