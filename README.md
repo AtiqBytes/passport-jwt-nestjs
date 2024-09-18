@@ -165,12 +165,14 @@ To run this project, you will need to add the following environment variables to
 
 
 #### Q: Why am I getting a "403 Forbidden" error when accessing a protected route?
+
 A: This usually happens when the user does not have the required role to access the route. Ensure that the `@Roles()` decorator is correctly applied to the route, and that the RolesGuard is verifying the roles correctly. Check that the user's role is included in the JWT payload when generating the token in `auth.service.ts`. Log the roles in the RolesGuard to ensure the correct roles are being checked, and verify that the roles are passed as an array in both the JWT payload and the user object.
 
 #### Q: Why is roles.includes or roles.find throwing an error in RolesGuard?
+
 A: This error occurs when roles is not an array, and you're trying to call array methods like includes() or find() on a non-array value. Ensure that the roles passed from the `@Roles()` decorator and in the JWT payload are arrays. In the RolesGuard, add a check to ensure roles is an array using `Array.isArray()`:
 
-```typescript
+
 if (!roles || !Array.isArray(roles)) {
   return true;  // No roles required, allow access
 }
