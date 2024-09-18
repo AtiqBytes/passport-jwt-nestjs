@@ -183,36 +183,44 @@ if (!roles || !Array.isArray(roles)) {
 
 A: This happens when the role is not included in the payload when generating the JWT token in AuthService. Ensure that the role is part of the user object when generating the JWT in auth.service.ts:
 
-
+```typescript
 const payload = { username: user.username, sub: user.userId, roles: [user.role] };
-Also, make sure that the roles are properly included when validating the token in jwt.strategy.ts:
+```
 
+Also, make sure that the roles are properly included when validating the token in jwt.strategy.ts:
+```typescript
 return { userId: payload.sub, username: payload.username, roles: payload.roles };
+```typescript
 
 #### Q: Why is the admin login not working while user login works?
 
 A: This can happen if the authentication logic is only checking the UsersService and not the AdminService when validating the user credentials. Ensure that in auth.service.ts, you're checking both the UsersService for regular users and the AdminService for admins:
 
+```typescript
 const user = await this.userService.findOne(username);
 if (!user) {
   const admin = await this.adminService.findOne(username);
   // Check admin login
 }
+```
 
 #### Q: Why is the RolesGuard always receiving ['admin'] in the roles variable, even for users?
 
 A: This happens if the @Roles() decorator is hardcoded or incorrectly set, causing the guard to always receive the same role. Ensure that the @Roles() decorator is correctly applied on routes and dynamically sets roles based on the expected access level:
-
+```typescript
 @Roles('admin')  // For admin routes
 @Roles('user')   // For user routes
+```
 
 #### Q: Why is the user.roles field undefined in the RolesGuard?
 
 A: This occurs if the roles are not being properly set or returned in the validate method of jwt.strategy.ts. Ensure that the validate function in jwt.strategy.ts returns the roles array from the JWT payload:
 
+```typescript
 async validate(payload: any) {
   return { userId: payload.sub, username: payload.username, roles: payload.roles };
 }
+```
 
 #### Q: Why am I getting Unauthorized during login even though the credentials are correct?
 
@@ -222,13 +230,17 @@ A: This might happen if the validateUser method in AuthService is not correctly 
 
 A: The expiration time of the JWT token is controlled by the expiresIn option in AuthService. If set too low, the token will expire quickly. Adjust the expiresIn value in the generateAccessToken method to a higher value if needed:
 
+```typescript
 return this.jwtService.sign(payload, { expiresIn: '3600s' });  // 1 hour
+```
 
 #### Q: Why is the refresh token not working properly or not returning a new access token?
 
 A: This could happen if the refresh token is not validated correctly or if the validateRefreshToken method in AuthService is not correctly implemented. Ensure that the refresh token is properly validated in validateRefreshToken:
 
+```typescript
 const payload = this.jwtService.verify(token);
+```
 Check that the refresh token has a longer expiresIn value than the access token, and ensure the correct user data is returned from the refresh token validation.
 
 
