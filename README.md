@@ -164,24 +164,68 @@ To run this project, you will need to add the following environment variables to
 
 
 
-#### Q: How do I troubleshoot issues with authentication?
-A: Check the console logs for error messages, ensure your environment variables are set correctly, and verify your database connection.
+#### Q: Why am I getting a "403 Forbidden" error when accessing a protected route?
+A: This usually happens when the user does not have the required role to access the route. Ensure that the `@Roles()` decorator is correctly applied to the route, and that the RolesGuard is verifying the roles correctly. Check that the user's role is included in the JWT payload when generating the token in `auth.service.ts`. Log the roles in the RolesGuard to ensure the correct roles are being checked, and verify that the roles are passed as an array in both the JWT payload and the user object.
 
-#### Q: Can I customize the authentication flow?
-A: Yes, you can modify the authentication flow by editing the auth.controller.ts and auth.service.ts files.
+#### Q: Why is roles.includes or roles.find throwing an error in RolesGuard?
+A: This error occurs when roles is not an array, and you're trying to call array methods like includes() or find() on a non-array value. Ensure that the roles passed from the `@Roles()` decorator and in the JWT payload are arrays. In the RolesGuard, add a check to ensure roles is an array using `Array.isArray()`:
 
-#### Q: What if I encounter a "401 Unauthorized" error?
+```typescript
+if (!roles || !Array.isArray(roles)) {
+  return true;  // No roles required, allow access
+}
+Q: Why is the role not included in the JWT token after login?
+A: This happens when the role is not included in the payload when generating the JWT token in AuthService. Ensure that the role is part of the user object when generating the JWT in auth.service.ts:
 
-A: Ensure your JWT token is valid, not expired, and correctly formatted. Also, check your role-based access control settings.
+typescript
+Copy code
+const payload = { username: user.username, sub: user.userId, roles: [user.role] };
+Also, make sure that the roles are properly included when validating the token in jwt.strategy.ts:
 
-#### Q: How do I handle errors when creating a new user?
-A: Catch and handle errors thrown by the users.service.ts file, such as duplicate usernames or invalid input.
+typescript
+Copy code
+return { userId: payload.sub, username: payload.username, roles: payload.roles };
+Q: Why is the admin login not working while user login works?
+A: This can happen if the authentication logic is only checking the UsersService and not the AdminService when validating the user credentials. Ensure that in auth.service.ts, you're checking both the UsersService for regular users and the AdminService for admins:
 
-#### Q: Can I use this project with a different database?
-A: Yes, you can modify the database.module.ts file to support a different database provider.
+typescript
+Copy code
+const user = await this.userService.findOne(username);
+if (!user) {
+  const admin = await this.adminService.findOne(username);
+  // Check admin login
+}
+Q: Why is the RolesGuard always receiving ['admin'] in the roles variable, even for users?
+A: This happens if the @Roles() decorator is hardcoded or incorrectly set, causing the guard to always receive the same role. Ensure that the @Roles() decorator is correctly applied on routes and dynamically sets roles based on the expected access level:
 
-#### Q: What if I encounter a "500 Internal Server Error"?
-A: Check the server logs for error messages, ensure your environment variables are set correctly, and verify your database connection.
+typescript
+Copy code
+@Roles('admin')  // For admin routes
+@Roles('user')   // For user routes
+Q: Why is the user.roles field undefined in the RolesGuard?
+A: This occurs if the roles are not being properly set or returned in the validate method of jwt.strategy.ts. Ensure that the validate function in jwt.strategy.ts returns the roles array from the JWT payload:
+
+typescript
+Copy code
+async validate(payload: any) {
+  return { userId: payload.sub, username: payload.username, roles: payload.roles };
+}
+Q: Why am I getting Unauthorized during login even though the credentials are correct?
+A: This might happen if the validateUser method in AuthService is not correctly validating credentials or if the password comparison using bcrypt fails. Verify that the user exists in the database by checking the UsersService and AdminService in validateUser, and ensure that bcrypt.compare() is properly comparing the plain-text password with the hashed password stored in the database.
+
+Q: Why is the JWT token expiring too quickly (after 60 seconds)?
+A: The expiration time of the JWT token is controlled by the expiresIn option in AuthService. If set too low, the token will expire quickly. Adjust the expiresIn value in the generateAccessToken method to a higher value if needed:
+
+typescript
+Copy code
+return this.jwtService.sign(payload, { expiresIn: '3600s' });  // 1 hour
+Q: Why is the refresh token not working properly or not returning a new access token?
+A: This could happen if the refresh token is not validated correctly or if the validateRefreshToken method in AuthService is not correctly implemented. Ensure that the refresh token is properly validated in validateRefreshToken:
+
+typescript
+Copy code
+const payload = this.jwtService.verify(token);
+Check that the refresh token has a longer expiresIn value than the access token, and ensure the correct user data is returned from the refresh token validation.
 ## Features
 
 - Role-Based Access Control
@@ -243,42 +287,84 @@ Install my-project with npm
 ## Authorization with Enum Files:
 
 Files Involved: role.enum.ts
-- I learned that we can manage authorization effectively using enum files.
-- By defining roles such as admin and user in role.enum.ts, we can then add an extra column, role, to an entity (e.g., user.entity.ts)
-- This setup allows the database to recognize which entity has which role and apply the appropriate permissions.
+- I learned that defining roles in an enum file like roles.enum.ts allows for effective role management.
+-  By using enums, I can define roles such as admin and user and integrate these roles into the system consistently.
+-   This ensures that roles are standardized across the application, especially when used in role-based access control.
+
+## Role Management in User and Admin Entities:
+
+Files Involved: user.entity.ts, admin.entity.ts
+
+- I added a role column to both the User and Admin entities.
+- This column helps assign a specific role to each user or admin in the system.
+-  When retrieving users from the database, this role is included in the JWT token to handle role-based authorization.
 
 ## Defining Roles in DTOs:
 
-Files Involved: create-user.dto.ts
+Files Involved: create-user.dto.ts, create-admin.dto.ts
 
-- When creating Data Transfer Objects (DTOs), such as create-user.dto.ts, I included an additional attribute called role of type Role.
-- This ensures that when creating a user, the backend expects the role to be part of the request structure.
+- I ensured that when creating users or admins, the role attribute is included in the DTOs (Data Transfer Objects).
+-  This guarantees that the role is part of the request structure when creating new users or admins, making the role available for authorization checks.
 
-## Role Decorator and Guard:
+##  Role Decorator and Guard:
 
-Files Involved: role.decorator.ts, roles.guard.ts
+Files Involved: roles.decorator.ts, roles.guard.ts
+- I created a Roles decorator (roles.decorator.ts) to specify which roles are allowed to access specific routes. 
+- The decorator allows me to define which roles (e.g., admin or user) are required to access a route.
+- The RolesGuard (roles.guard.ts) then enforces these role requirements.
+-  Initially, I faced issues when the guard failed due to roles.includes not being a function, but I fixed this by ensuring roles was always an array.
+-  
+## Handling Admin and User Login with JWT:
 
-- To utilize the role variable, I created a role decorator (role.decorator.ts).
-- This decorator is applied to routes, such as a signup route, and allows specifying which roles (e.g., user or admin) are required.
+Files Involved: auth.service.ts, jwt.strategy.ts, local.strategy.ts
 
--  The role guard (roles.guard.ts) is then used to enforce these role requirements on the route.
+- I implemented a system where both admins and users can log in using the same authentication service.
+-  Initially, I faced an issue where only user logins were working because I was only checking UsersService for validation.
+-   I solved this by adding a check for AdminService in AuthService, ensuring that both admins and users can log in and receive their respective JWT tokens.
 
-## Issue with Global Auth Guard:
+## Issues Faced:
 
-## Files Involved: auth.module.ts, auth.guard.ts
-- I encountered an issue where signup and signin routes were not functioning correctly.
-- The problem was that the authentication guard (auth.guard.ts) was registered globally in auth.module.ts, applying it to all routes.
-- Since signup and signin should not require a token, this setup caused problems. The solution was to use a public decorator on the signup route, allowing access without restriction.
-
-## JWT Payload and Role Encoding:
+## Fixing JWT Payload and Role Encoding:
 
 Files Involved: auth.service.ts, jwt.strategy.ts
 
-- Another issue arose when I could not access route protected by the role decorator.
--  After investigation, I discovered that the JWT payload was only encoding the user ID and username, not the role.
--  As a result, the system could not verify the user's role.
--  To resolve this, I included the role in the JWT payload within auth.service.ts and updated jwt.strategy.ts accordingly.
-- With this change, access to protected routes based on roles began functioning correctly.
+- I encountered an issue where the role was not included in the JWT payload, which caused the role guard to fail.
+-  To resolve this, I updated the generateAccessToken and generateRefreshToken methods in auth.service.ts to include the user's role in the JWT payload.
+-   Additionally, I fixed the JwtStrategy to ensure the roles were extracted correctly from the token payload.
+
+## Role-Based Route Protection and 403 Forbidden Issue:
+
+Files Involved: app.controller.ts, roles.guard.ts
+
+- When trying to access the /profile route, I encountered a 403 Forbidden error even though the correct roles were assigned.
+-  This was due to the roles not being properly included in the JWT or not being correctly handled in the JwtStrategy.
+-   Once I ensured that the roles were properly extracted and passed through the RolesGuard, the issue was resolved, and admins were able to access admin-only routes.
+
+##  Improper Roles Handling in Roles Guard:
+
+Files Involved: roles.guard.ts
+
+- The RolesGuard initially threw errors like roles.includes is not a function.
+-  This happened because roles was not always an array.
+-  After adding checks to ensure roles was an array, I was able to resolve the issue and properly enforce role-based access control. I also learned to log the roles and user.roles to debug these types of issues effectively.
+
+## JWT Role Handling and Forbidden Resource:
+
+Files Involved: roles.guard.ts, jwt.strategy.ts
+
+- Another issue arose when I consistently received a Forbidden resource error after login.
+- The problem was that the roles in the JWT payload were not correctly handled in the RolesGuard or JwtStrategy.
+-  I learned to ensure that the roles are properly encoded in the JWT and extracted correctly during validation to allow access to routes based on roles.
+
+## Testing Role Guards and Fixing Access Issues:
+
+Files Involved: app.controller.ts, roles.guard.ts
+
+- After resolving the role-based access issues, I tested the functionality by creating separate routes for users and admins, applying the @Roles() decorator to protect the routes.
+-  By using Postman to test login and accessing the protected routes, I confirmed that only admins could access admin-only routes and users could not.
+
+  
+  
 
 
 ## License
