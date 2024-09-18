@@ -1,10 +1,14 @@
-import { User } from './users/user.entity';
+
 import { Controller, Get,Request, Post, UseGuards, Body } from '@nestjs/common';
 import { AppService } from './app.service';
-import { AuthGuard } from '@nestjs/passport';
+
 import { LocalAuthGuard } from './auth/local-auth.guard';
 import { AuthService } from './auth/auth.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
+import { Roles } from './auth/roles.decorator';
+import { Role } from './auth/roles.enum';
+
 
 
 @Controller()
@@ -17,7 +21,8 @@ export class AppController {
     return this.authService.login(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard,RolesGuard)
+  @Roles('admin')
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
